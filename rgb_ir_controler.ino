@@ -295,7 +295,7 @@ void loop()
     {
       COLOR_CYCLE++;
     }
-    HsvToRgb(abs(COLOR_CYCLE), 255, 255, &RGB_COLOR);
+    HsvToRgb(abs(COLOR_CYCLE), CODE_TABLE.lastSaturation, CODE_TABLE.lastValue, &RGB_COLOR);
     SetLedColor(&RGB_COLOR);
     delay(400);
   }
@@ -330,7 +330,6 @@ void loop()
     else if (color_command == CODE_TABLE.buttonStandby)
     {
       power_down();// stand-by
-      awaken = true;
     }
     else if (color_command == CODE_TABLE.buttonRed) // red
     {
@@ -387,7 +386,9 @@ void loop()
       Serial.print(F("Unknown command : 0x")); Serial.println(color_command, HEX);
       if (true == awaken)
       {
-        // just awaken, no valid command : go back to sleep
+	color_command = 0; // Clear command
+        
+	// just awaken, no valid command : go back to sleep
         power_down();
 
         // just awaken
@@ -398,12 +399,9 @@ void loop()
     {
       HsvToRgb(CODE_TABLE.lastHue, CODE_TABLE.lastSaturation, CODE_TABLE.lastValue, &RGB_COLOR);
       SetLedColor(&RGB_COLOR);
+      awaken = false;
     }
     color_command = 0; // Clear command
-  }
-  else
-  {
-    awaken = false;
   }
 }
 
@@ -556,7 +554,7 @@ void program(void)
       }
       Serial.print("Stored ");Serial.print(newCode, HEX);
       Serial.print(" as hash for command #");Serial.println(n);
-      delay(1000);
+      delay(500);
       n++;
       previousCode = newCode;
       newCode = 0;
@@ -606,6 +604,7 @@ void SetLedColor(rgbColor_t *rgbColor)
   Serial.print(F("/"));
   Serial.println(rgbColor->blue);
 #endif
+*/
 
   Serial.print("*G") ;
   Serial.print(rgbColor->red);
@@ -614,7 +613,7 @@ void SetLedColor(rgbColor_t *rgbColor)
   Serial.print(F(","));
   Serial.print(rgbColor->blue);
   Serial.println("*");
-*/
+
 #ifdef SIMULATOR
   analogWrite(RED_PIN,   rgbColor->red);
   analogWrite(GREEN_PIN, rgbColor->green);
@@ -701,11 +700,11 @@ void power_down(void)
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   go_to_sleep = false;
   sleep_enable(); // Prepare for sleep.
-  
+ 
   analogWrite(RED_PIN,   255);
   analogWrite(GREEN_PIN, 255);
   analogWrite(BLUE_PIN,  255);
-  
+ 
   sei(); // Arm wake-up interrupt.
   sleep_cpu(); // Sleep...
   sleep_disable();
@@ -714,8 +713,6 @@ void power_down(void)
 
 ISR(INT0_vect)
 {
-  // Wake up.
-  sleep_disable();
   EIMSK &= ~_BV(INT0); // Disable INT0 interrupt
   awaken = true;
 }
